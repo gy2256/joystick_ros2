@@ -159,11 +159,45 @@ XONE_VALUE_MAP = {
     7: (-1, 1)
 }
 
+RADIOMASTER_POCKET_CODE_MAP = {
+    'ABS_X': 0,
+    'ABS_Y': 1,
+    'ABS_Z': 2,
+    'ABS_RX': 3,
+    'ABS_RY': 4,
+    'ABS_RZ': 5,
+    'ABS_HAT0X': 6,
+    'ABS_HAT0Y': 7,
+    'BTN_SOUTH': 0,
+    'BTN_EAST': 1,
+    'BTN_NORTH': 2,
+    'BTN_WEST': 3,
+    'BTN_TL': 4,
+    'BTN_TR': 5,
+    'BTN_SELECT': 6,
+    'BTN_START': 7,
+    'BTN_MODE': 8,
+    'BTN_THUMBL': 9,
+    'BTN_THUMBR':10
+}
+
+RADIOMASTER_POCKET_VALUE_MAP = {
+    0: (0, 2047), # right stick, roll
+    1: (0, 2047), # right stick, pitch
+    2: (0, 2047), # left stick, thrust
+    3: (0, 2047), # left stick, yaw
+    4: (-32768, -32767),
+    5: (0, 1023),
+    6: (-1, 1),
+    7: (-1, 1)
+}
+
 JOYSTICK_CODE_VALUE_MAP = {
     'Microsoft X-Box 360 pad': (XINPUT_CODE_MAP, XINPUT_VALUE_MAP),
     'Sony Computer Entertainment Wireless Controller': (PS4_CODE_MAP, PS4_VALUE_MAP),
     'Logitech Gamepad F710': (F710_CODE_MAP, F710_VALUE_MAP),
-    'Microsoft X-Box One pad': (XONE_CODE_MAP, XONE_VALUE_MAP)
+    'Microsoft X-Box One pad': (XONE_CODE_MAP, XONE_VALUE_MAP),
+    'EdgeTX Radiomaster Pocket Joystick': (RADIOMASTER_POCKET_CODE_MAP, RADIOMASTER_POCKET_VALUE_MAP)
 }
 
 class JoystickRos2(Node):
@@ -186,7 +220,7 @@ class JoystickRos2(Node):
         self.joy.buttons = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         # Joy publisher
-        self.publisher_ = self.create_publisher(Joy, 'joy')
+        self.publisher_ = self.create_publisher(Joy, 'joy', 10)
 
         # logic params
         self.last_event = None
@@ -198,7 +232,7 @@ class JoystickRos2(Node):
         self.joy.header.stamp.nanosec = int(current_time[0] * 1000000000) & 0xffffffff
         self.publisher_.publish(self.joy)
         self.last_publish_time = time.time()
-        #print(self.joy)
+
 
     def normalize_key_value(self, key_value_min, key_value_max, key_value):
         normalized = ((key_value - key_value_min) / (key_value_max - key_value_min) * (-2)) + 1
@@ -221,6 +255,7 @@ class JoystickRos2(Node):
 
             # detected joystick is not keymapped yet
             if (gamepad.name not in JOYSTICK_CODE_VALUE_MAP):
+                print(gamepad.name)
                 print('Sorry, joystick type not supported yet! Please plug in supported joystick')
                 time.sleep(1)
                 device_manager.find_devices()
@@ -254,6 +289,8 @@ class JoystickRos2(Node):
                                 self.last_event = event
                             elif (event.ev_type == 'Absolute'):
                                 value_range = JOYSTICK_CODE_VALUE_MAP[event.device.name][1][key_code]
+                                # if key_code == 3:
+                                #     print(event.state)
                                 self.joy.axes[key_code] = self.normalize_key_value(value_range[0], value_range[1], event.state)
                                 if (self.last_event is None) or (self.last_event.code != event.code) or (time.time() - self.last_publish_time > self.coalesce_interval):
                                     self.publish_joy()
